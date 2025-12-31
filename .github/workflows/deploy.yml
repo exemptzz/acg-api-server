@@ -1,0 +1,78 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main  # Change to your main branch name (main, master, etc.)
+    paths:
+      - 'api-server/**'  # Only deploy when API server files change
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        
+    - name: Deploy to VPS via SSH
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.VPS_HOST }}          # Your VPS IP or domain
+        username: ${{ secrets.VPS_USER }}      # Your VPS username (usually 'root' or 'ubuntu')
+        key: ${{ secrets.VPS_SSH_KEY }}        # Your SSH private key
+        port: ${{ secrets.VPS_PORT || 22 }}    # SSH port (default 22)
+        script: |
+          # Navigate to API directory (correct path - no double nesting)
+          cd /opt/auth-api/api-server
+          
+          # Pull latest changes
+          git pull origin main
+          
+          # Handle git repo structure - if files are in api-server/ subfolder, move them up
+          if [ -d "api-server" ] && [ -f "api-server/server.js" ]; then
+            echo "🔄 Moving files from nested api-server folder to root..."
+            # Move all files from api-server/ to current directory
+            mv api-server/* . 2>/dev/null || true
+            mv api-server/.* . 2>/dev/null || true
+            # Remove empty api-server folder
+            rmdir api-server 2>/dev/null || true
+            echo "✅ Files moved to correct location"
+          fi
+          
+          # Clean up any remaining nested api-server folders
+          if [ -d "api-server" ] && [ ! -f "api-server/server.js" ]; then
+            echo "🧹 Cleaning up empty nested api-server folder..."
+            rm -rf api-server
+          fi
+          
+          # Install/update dependencies
+          npm install --production
+          
+          # Run cleanup script if it exists
+          if [ -f "cleanup-vps.sh" ]; then
+            chmod +x cleanup-vps.sh
+            ./cleanup-vps.sh
+          else
+            # Basic cleanup
+            echo "🧹 Cleaning up old files..."
+            find . -maxdepth 2 -name "*.bak" -o -name "*.old" -o -name "*.tmp" | xargs rm -f 2>/dev/null || true
+            find . -maxdepth 2 -name "*.log" -mtime +7 -delete 2>/dev/null || true
+          fi
+          
+          # Ensure updates directory exists for serving update files
+          mkdir -p /opt/auth-api/updates
+          
+          # Restart API server (using PM2)
+          pm2 restart auth-api || pm2 start server.js --name auth-api
+          
+          # Or if using systemd:
+          # sudo systemctl restart auth-api
+          
+          echo "✅ Deployment complete!"
+
