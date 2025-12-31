@@ -499,9 +499,9 @@ app.get('/health', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n=== Authentication API Server ===`);
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Server running on http://0.0.0.0:${PORT}`);
     console.log(`API Key: ${CONFIG.API_KEY}`);
     console.log(`User Agent: ${CONFIG.USER_AGENT}`);
     console.log(`\nClient Endpoints:`);
