@@ -34,7 +34,7 @@ try {
 const CONFIG = {
     API_KEY: process.env.API_KEY || 'Bearer be886aeb8dbfef0f1c58eb13cbef84a3e8af25ca57c7f5a6ef1f2977515bd617', // Your API key (use env var in production)
     USER_AGENT: process.env.USER_AGENT || 'CustomClient/1.0', // Should match your client's user agent
-    APP_VERSION: process.env.APP_VERSION || '1.0'
+    APP_VERSION: process.env.APP_VERSION || '1.1'
 };
 
 // Middleware - CORS configuration
